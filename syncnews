@@ -1,0 +1,3 @@
+rsync --verbose --progress --stats --compress \
+	--recursive --times --delete \
+	walter@digitalmars.com:/usr/local/news/spool/articles/ articles

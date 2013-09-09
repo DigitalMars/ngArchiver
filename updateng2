@@ -1,0 +1,4 @@
+cd /home/walter/newsgroups
+nice ./syncnews
+nice shell all2.sh
+nice ./synchtml

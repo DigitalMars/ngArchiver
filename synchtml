@@ -1,0 +1,3 @@
+rsync --verbose --progress --stats --compress \
+	--recursive --times --delete --size-only \
+	todir/ walter@digitalmars.com:/usr/local/www/digitalmars.com/data/d/archives/
