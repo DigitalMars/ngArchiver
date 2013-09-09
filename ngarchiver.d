@@ -17,30 +17,30 @@ import std.string;
 
 version=READPHP;
 
-const char[] stylesheet = "http://www.digitalmars.com/forum.css";
-const char[] printsheet = "http://www.digitalmars.com/forum-print.css";
-//const char[] stylesheet = "style.css";
+const string stylesheet = "http://www.digitalmars.com/forum.css";
+const string printsheet = "http://www.digitalmars.com/forum-print.css";
+//const string stylesheet = "style.css";
 
-const char[] pivotdate = "October 1, 2010";
-//const char[] pivotdate = "September 1, 2009";
-//const char[] pivotdate = "January 1, 2001";
+const string pivotdate = "June 1, 2011";
+//const string pivotdate = "September 1, 2009";
+//const string pivotdate = "January 1, 2001";
 
 
 
 
 class Posting
 {
-    char[] filename;
-    char[] filebody;
-    char[][] lines;
-    char[] from;
-    char[] date;
-    char[][] msg;
-    char[] subject;
-    char[] newsgroups;
-    char[][] refs;
-    char[] boundary;
-    char[] msgid;
+    string filename;
+    string filebody;
+    string[] lines;
+    string from;
+    string date;
+    string[] msg;
+    string subject;
+    string newsgroups;
+    string[] refs;
+    string boundary;
+    string msgid;
     Posting L,R,U,D;
     int nmessages = 1;	// number of messages in this thread
     int counted;
@@ -48,9 +48,9 @@ class Posting
     int tocwritten;
     d_time pdate;	// date[] converted to time_t
     d_time most_recent_date;	// time of most recent reply
-    char[] shortdate;	// date[] converted to canonical, short form
+    string shortdate;	// date[] converted to canonical, short form
 
-    this(char[] filename)
+    this(string filename)
     {
 	this.filename = filename;
     }
@@ -58,29 +58,49 @@ class Posting
 
 FILE*[int] indexfiles;	// index files, key type is the year
 
-int[char[]] msgid2num;	// from message id to message number
+int[string] msgid2num;	// from message id to message number
 
 int postingstart;
 Posting[] postings;
 
-int main(char[][] args)
+int main(string[] args)
 {
-    char[] ng;
-    char[] dir;
-    char[] site;
-    int year = std.date.YearFromTime(std.date.getUTCtime());
+    auto year = std.date.YearFromTime(std.date.getUTCtime());
 
-    if (args.length != 3)
-    {	writefln("Usage: foo fromdir sitedir");
+    if (args.length != 5)
+    {
+	//writefln("Usage: foo fromdir sitedir");
+	writefln("Usage: foo fromdir todir sitedir ngdir");
 	exit(1);
     }
-    dir = args[1];
-    site = args[2];
+//    auto dir = args[1];
+//    auto site = args[2];
+
+    auto fromdir = args[1];
+    auto todir = args[2];
+    auto sitedir = args[3];
+    auto ngdir = args[4];
+
+    auto fromdirng = std.path.join(fromdir, ngdir);
+    string todirng;
+    string sitedirng;
+    if (ngdir == "D")
+    {	todirng = todir;
+	sitedirng = sitedir;
+    }
+    else
+    {   todirng = std.path.join(todir, ngdir);
+	sitedirng = std.path.join(sitedir, ngdir);
+    }
+
+    writefln("fromdirng = ", fromdirng);
+    writefln("todirng   = ", todirng);
+    writefln("sitedirng = ", sitedirng);
 
     writefln("Converting...");
 
-    // Get all the files in directory dir into files[]
-    char[][] files = std.file.listdir(dir);
+    // Get all the files in directory fromdirng into files[]
+    string[] files = std.file.listdir(fromdirng);
 
     writefln(files.length, " files");
 
@@ -88,14 +108,14 @@ int main(char[][] args)
     // and put them in postings[]
     postings.length = files.length;
   Lfiles:
-    foreach (char[] filename; files)
+    foreach (filename; files)
     {
-	foreach (char c; filename)
+	foreach (c; filename)
 	{
 	    if (!std.ctype.isdigit(c))
 		continue Lfiles;
 	}
-	int n = std.string.atoi(filename);
+	auto n = std.string.atoi(filename);
 	if (std.string.toString(n) != filename)
 	    continue;
 
@@ -106,16 +126,17 @@ int main(char[][] args)
 
     writefln("Reading postings...");
 
+    string ng;
     foreach (size_t n, Posting posting; postings)
     {
 	if (!posting)
 	    continue;
 	//writefln("-------------- ", posting.filename, " ------------------");
-	posting.filebody = cast(char[])std.file.read(std.path.join(dir, posting.filename));
+	posting.filebody = cast(string)std.file.read(std.path.join(fromdirng, posting.filename));
 	posting.lines = std.string.splitlines(posting.filebody);
 
 	// Parse the file
-	foreach (size_t i, char[] line; posting.lines)
+	foreach (size_t i, string line; posting.lines)
 	{
 	    if (std.string.find(line, "From: ") == 0)
 		posting.from = line[6 .. line.length];
@@ -133,7 +154,7 @@ int main(char[][] args)
 	    if (std.string.find(line, "Newsgroups: ") == 0)
 	    {	posting.newsgroups = line[12 .. line.length];
 		// If more than one, pick first one
-		int j = std.string.find(posting.newsgroups, ',');
+		auto j = std.string.find(posting.newsgroups, ',');
 		if (j > 0)
 		    posting.newsgroups = posting.newsgroups[0 .. j];
 		if (!ng)
@@ -146,11 +167,11 @@ int main(char[][] args)
 	    }
 
 	    if (std.string.find(line, "References: ") == 0)
-	    {	char[] refs = line[12 .. line.length];
+	    {	string refs = line[12 .. line.length];
 		posting.refs = std.string.split(refs);
 	    }
 
-	    int b = std.string.find(line, "boundary=\"");
+	    auto b = std.string.find(line, "boundary=\"");
 	    if (b >= 0)
 	    {	b += 10;		// skip over 'boundary='
 		int e = std.string.find(line[b .. line.length], '"');
@@ -166,7 +187,7 @@ int main(char[][] args)
 	}
 
 	//printf("from: %.*s\n", posting.from);
-	foreach (char[] line; posting.msg)
+	foreach (string line; posting.msg)
 	{
 	    //writefln("--> ", line);
 	}
@@ -174,33 +195,33 @@ int main(char[][] args)
 
     writefln("Writing HTML files...");
 
-    FILE* fpindex;
-    fpindex = std.c.stdio.fopen(toStringz(std.path.join(dir, "index.html")), "w");
+    auto fpindex = std.c.stdio.fopen(toStringz(std.path.join(todirng, "index.html")), "w");
+    assert(fpindex);
     header(fpindex, "news.digitalmars.com - " ~ ng, null, null, null, null);
     indexfiles[year] = fpindex;
 
-    FILE* fpftp;
-    fpftp = std.c.stdio.fopen(toStringz(std.path.join(dir, "put.ftp")), "w");
+    auto fpftp = std.c.stdio.fopen(toStringz(std.path.join(todirng, "put.ftp")), "w");
+    assert(fpftp);
     version(none)
     {
 	fwritefln(fpftp, "name");
 	fwritefln(fpftp, "password");
 	fwritefln(fpftp, "bin");
     }
-    fwritefln(fpftp, "cd %s", site);
+    fwritefln(fpftp, "cd %s", sitedirng);
     fwritefln(fpftp, "put index.html");
 
-    static d_time pivot = d_time_nan;
+    static pivot = d_time_nan;
     if (pivot == d_time_nan)
     {
 	pivot = std.date.parse(pivotdate);
     }
 
-    char[] prev;
-    char[] next;
+    string prev;
+    string next;
 
-    char[] prevTitle;
-    char[] nextTitle;
+    string prevTitle;
+    string nextTitle;
 
     for (size_t i = postings.length; i--;)
     {
@@ -225,7 +246,7 @@ int main(char[][] args)
 		} 
 	    }
 
-	    char[] fname = toHtmlFilename(posting);
+	    string fname = toHtmlFilename(posting);
 
 	    {
 	    int x = postingstart;
@@ -235,7 +256,7 @@ int main(char[][] args)
 
 	    if (posting.most_recent_date > pivot)
 	    {	// Write out the html file
-		auto fp = std.c.stdio.fopen(toStringz(std.path.join(dir, fname)), "w");
+		auto fp = std.c.stdio.fopen(toStringz(std.path.join(todirng, fname)), "w");
 		assert(fp);
 		header(fp, posting.newsgroups ~ " - " ~ posting.subject, prev, next, prevTitle, nextTitle);
 		int x = postingstart;
@@ -267,8 +288,9 @@ int main(char[][] args)
 		pyear = std.date.YearFromTime(posting.most_recent_date);
 	    if (!(pyear in indexfiles))
 	    {	// Create new index file
-		char[] indexfilename = std.string.format("index%d.html", pyear);
-		fpindex = std.c.stdio.fopen(toStringz(std.path.join(dir, indexfilename)), "w");
+		string indexfilename = std.string.format("index%d.html", pyear);
+		fpindex = std.c.stdio.fopen(toStringz(std.path.join(todirng, indexfilename)), "w");
+		assert(fpindex);
 		header(fpindex, "news.digitalmars.com - " ~ ng, null, null, null, null);
 		indexfiles[pyear] = fpindex;
 		fwritefln(fpftp, "put %s", indexfilename);
@@ -386,7 +408,7 @@ void toTOC(FILE* fp, Posting p, Posting pstart, int depth)
 	if (!posting)
 	    continue;
 
-	foreach (char[] rf; posting.refs)
+	foreach (string rf; posting.refs)
 	{   if (rf == p.msgid)
 	    {
 		if (!posting.tocwritten)
@@ -483,7 +505,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	{   // Only do the first section
 	    int state;
 
-	    foreach (int i, char[] line; p.msg)
+	    foreach (int i, string line; p.msg)
 	    {
 		if (line.length > 2 && line[2 .. line.length] == p.boundary)
 		{   if (state)
@@ -501,7 +523,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	}
 	else
 	{
-	    foreach (int i, char[] line; p.msg)
+	    foreach (int i, string line; p.msg)
 	    {
 		// Look for 'begin OOO filename', and ignore it
 		if (line.length > 9 &&
@@ -611,7 +633,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	if (!posting)
 	    continue;
 
-	foreach (char[] rf; posting.refs)
+	foreach (string rf; posting.refs)
 	{   if (rf == p.msgid)
 	    {	toHTML(fp, posting, pstart);
 		d_time t = std.date.parse(posting.date);
@@ -623,7 +645,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
     }
 }
 
-void header(FILE* fp, char[] title, char[] prev, char[] next, char[] prevTitle, char[] nextTitle)
+void header(FILE* fp, string title, string prev, string next, string prevTitle, string nextTitle)
 {
     if (prevTitle.length == 0)
 	prevTitle = "previous topic";
@@ -829,7 +851,7 @@ google_color_text = "000000";
 
 }
 
-void escapeHTML(FILE* fp, char[] s)
+void escapeHTML(FILE* fp, string s)
 {
     // Note: replace "Mark Evans" with "Mark E."
 
@@ -864,7 +886,7 @@ void escapeHTML(FILE* fp, char[] s)
  * Write line of posting text to output.
  */
 
-void writeLine(FILE* fp, char[] line)
+void writeLine(FILE* fp, string line)
 {
     int i;
 
@@ -873,7 +895,7 @@ void writeLine(FILE* fp, char[] line)
 	goto L1;
 
     //if (line[i + 1] == 't') writefln("found h '%s'", line[i .. length]);
-    char[] url;
+    string url;
     url = isURL(line[i .. length]);
     if (!url)
     {	escapeHTML(fp, line[0 .. i + 1]);
@@ -883,10 +905,10 @@ void writeLine(FILE* fp, char[] line)
 
     //writefln("found url '%s'", url);
     escapeHTML(fp, line[0 .. i]);
-    char[] rest = line[i + url.length .. length];
+    string rest = line[i + url.length .. length];
 
     // Convert url from old wwwnews format to new format
-    static char[] wwwnews = "http://www.digitalmars.com/drn-bin/wwwnews?";
+    static string wwwnews = "http://www.digitalmars.com/drn-bin/wwwnews?";
     if (url.length > wwwnews.length && std.string.cmp(url[0 .. wwwnews.length], wwwnews) == 0)
     {
 	int j;
@@ -894,12 +916,12 @@ void writeLine(FILE* fp, char[] line)
 	if (j == -1)
 	    goto L2;
 
-	char[] ng = url[wwwnews.length .. wwwnews.length + j];
-	static char[] cpp = "c%2B%2B";
+	string ng = url[wwwnews.length .. wwwnews.length + j];
+	static string cpp = "c%2B%2B";
 	if (ng.length >= cpp.length && std.string.cmp(ng[0 .. cpp.length], cpp) == 0)
 	    ng = "c++" ~ ng[cpp.length .. length];
 
-	char[] article = url[wwwnews.length + j + 1 .. length];
+	string article = url[wwwnews.length + j + 1 .. length];
 
 	url = "http://www.digitalmars.com/pnews/read.php?server=news.digitalmars.com&group="
 	      ~ ng
@@ -926,7 +948,7 @@ L1:
  *	RFC2822
  */
 
-char[] isEmail(char[] s)
+string isEmail(string s)
 {   size_t i;
 
     if (!isalpha(s[0]))
@@ -979,7 +1001,7 @@ Lno:
  * Recognize URL
  */
 
-char[] isURL(char[] s)
+string isURL(string s)
 {
     /* Must start with one of:
      *	http://
@@ -1030,9 +1052,9 @@ Lno:
     return null;
 }
 
-char[] toHtmlFilename(Posting p)
+string toHtmlFilename(Posting p)
 {
-    char[] fname;
+    string fname;
     static d_time pivot = d_time_nan;
     static d_time pivot2 = d_time_nan;
 
