@@ -6,14 +6,20 @@
  * http://thread.gmane.org/gmane.comp.version-control.git/57643/focus=57918
  */
 
+import core.stdc.stdio;
+import core.stdc.stdlib;
+import core.stdc.ctype;
+
 import std.uri;
-import std.c.stdio;
-import std.c.stdlib;
 import std.file;
-import std.ctype;
 import std.stdio;
-import std.date;
 import std.string;
+import std.conv;
+import std.format;
+import std.array;
+import std.utf;
+
+import undead.date;
 
 version=READPHP;
 
@@ -56,7 +62,7 @@ class Posting
     }
 }
 
-FILE*[int] indexfiles;	// index files, key type is the year
+File[int] indexfiles;	// index files, key type is the year
 
 int[string] msgid2num;	// from message id to message number
 
@@ -65,7 +71,7 @@ Posting[] postings;
 
 int main(string[] args)
 {
-    auto year = std.date.YearFromTime(std.date.getUTCtime());
+    auto year = undead.date.yearFromTime(undead.date.getUTCtime());
 
     if (args.length != 5)
     {
@@ -81,7 +87,7 @@ int main(string[] args)
     auto sitedir = args[3];
     auto ngdir = args[4];
 
-    auto fromdirng = std.path.join(fromdir, ngdir);
+    auto fromdirng = std.path.buildPath(fromdir, ngdir);
     string todirng;
     string sitedirng;
     if (ngdir == "D")
@@ -89,20 +95,20 @@ int main(string[] args)
 	sitedirng = sitedir;
     }
     else
-    {   todirng = std.path.join(todir, ngdir);
-	sitedirng = std.path.join(sitedir, ngdir);
+    {   todirng = std.path.buildPath(todir, ngdir);
+	sitedirng = std.path.buildPath(sitedir, ngdir);
     }
 
-    writefln("fromdirng = ", fromdirng);
-    writefln("todirng   = ", todirng);
-    writefln("sitedirng = ", sitedirng);
+    writefln("fromdirng = %s", fromdirng);
+    writefln("todirng   = %s", todirng);
+    writefln("sitedirng = %s", sitedirng);
 
     writefln("Converting...");
 
     // Get all the files in directory fromdirng into files[]
-    string[] files = std.file.listdir(fromdirng);
+    string[] files = listdir(fromdirng);
 
-    writefln(files.length, " files");
+    writefln("%s files", files.length);
 
     // Determine which of the files in files[] are postings,
     // and put them in postings[]
@@ -112,11 +118,11 @@ int main(string[] args)
     {
 	foreach (c; filename)
 	{
-	    if (!std.ctype.isdigit(c))
+	    if (!core.stdc.ctype.isdigit(c))
 		continue Lfiles;
 	}
-	auto n = std.string.atoi(filename);
-	if (std.string.toString(n) != filename)
+	auto n = atoi(filename);
+	if (toString(n) != filename)
 	    continue;
 
 	if (n >= postings.length)
@@ -131,50 +137,50 @@ int main(string[] args)
     {
 	if (!posting)
 	    continue;
-	//writefln("-------------- ", posting.filename, " ------------------");
-	posting.filebody = cast(string)std.file.read(std.path.join(fromdirng, posting.filename));
-	posting.lines = std.string.splitlines(posting.filebody);
+	std.stdio.writef("%s\r", posting.filename);
+	posting.filebody = cast(string)std.file.read(std.path.buildPath(fromdirng, posting.filename));
+	posting.lines = splitlines(posting.filebody);
 
 	// Parse the file
 	foreach (size_t i, string line; posting.lines)
 	{
-	    if (std.string.find(line, "From: ") == 0)
+	    if (std.string.indexOf(line, "From: ") == 0)
 		posting.from = line[6 .. line.length];
 
-	    if (std.string.find(line, "Date: ") == 0)
+	    if (std.string.indexOf(line, "Date: ") == 0)
 	    {	posting.date = line[6 .. line.length];
-		posting.pdate = std.date.parse(posting.date);
+		posting.pdate = undead.date.parse(posting.date);
 		posting.most_recent_date = posting.pdate;
-		posting.shortdate = std.date.toDateString(posting.pdate)[4 .. $];
+		posting.shortdate = undead.date.toDateString(posting.pdate)[4 .. $];
 	    }
 
-	    if (std.string.find(line, "Subject: ") == 0)
+	    if (std.string.indexOf(line, "Subject: ") == 0)
 		posting.subject = line[9 .. line.length];
 
-	    if (std.string.find(line, "Newsgroups: ") == 0)
+	    if (std.string.indexOf(line, "Newsgroups: ") == 0)
 	    {	posting.newsgroups = line[12 .. line.length];
 		// If more than one, pick first one
-		auto j = std.string.find(posting.newsgroups, ',');
+		auto j = std.string.indexOf(posting.newsgroups, ',');
 		if (j > 0)
 		    posting.newsgroups = posting.newsgroups[0 .. j];
 		if (!ng)
 		    ng = posting.newsgroups;
 	    }
 
-	    if (std.string.find(line, "Message-ID: ") == 0)
+	    if (std.string.indexOf(line, "Message-ID: ") == 0)
 	    {	posting.msgid = line[12 .. line.length];
-		msgid2num[posting.msgid] = n;
+		msgid2num[posting.msgid] = cast(int)n;
 	    }
 
-	    if (std.string.find(line, "References: ") == 0)
+	    if (std.string.indexOf(line, "References: ") == 0)
 	    {	string refs = line[12 .. line.length];
 		posting.refs = std.string.split(refs);
 	    }
 
-	    auto b = std.string.find(line, "boundary=\"");
+	    auto b = std.string.indexOf(line, "boundary=\"");
 	    if (b >= 0)
 	    {	b += 10;		// skip over 'boundary='
-		int e = std.string.find(line[b .. line.length], '"');
+		auto e = std.string.indexOf(line[b .. line.length], '"');
 		if (e >= 0)
 		    posting.boundary = line[b .. b + e];
 	    }
@@ -195,26 +201,24 @@ int main(string[] args)
 
     writefln("Writing HTML files...");
 
-    auto fpindex = std.c.stdio.fopen(toStringz(std.path.join(todirng, "index.html")), "w");
-    assert(fpindex);
+    auto fpindex = File(std.path.buildPath(todirng, "index.html"), "w");
     header(fpindex, "news.digitalmars.com - " ~ ng, null, null, null, null);
     indexfiles[year] = fpindex;
 
-    auto fpftp = std.c.stdio.fopen(toStringz(std.path.join(todirng, "put.ftp")), "w");
-    assert(fpftp);
+    auto fpftp = File(std.path.buildPath(todirng, "put.ftp"), "w");
     version(none)
     {
-	fwritefln(fpftp, "name");
-	fwritefln(fpftp, "password");
-	fwritefln(fpftp, "bin");
+	fpftp.writeln("name");
+	fpftp.writeln("password");
+	fpftp.writeln("bin");
     }
-    fwritefln(fpftp, "cd %s", sitedirng);
-    fwritefln(fpftp, "put index.html");
+    fpftp.writefln("cd %s", sitedirng);
+    fpftp.writefln("put index.html");
 
     static pivot = d_time_nan;
     if (pivot == d_time_nan)
     {
-	pivot = std.date.parse(pivotdate);
+	pivot = undead.date.parse(pivotdate);
     }
 
     string prev;
@@ -256,81 +260,79 @@ int main(string[] args)
 
 	    if (posting.most_recent_date > pivot)
 	    {	// Write out the html file
-		auto fp = std.c.stdio.fopen(toStringz(std.path.join(todirng, fname)), "w");
-		assert(fp);
+		auto fp = File(std.path.buildPath(todirng, fname), "w");
 		header(fp, posting.newsgroups ~ " - " ~ posting.subject, prev, next, prevTitle, nextTitle);
 		int x = postingstart;
 		if (!posting.tocwritten)
 		{
-		    fwritefln(fp, "<div id=\"PostingTOC\">");
-		    fwritefln(fp, "<ul>");
+		    fp.writefln("<div id=\"PostingTOC\">");
+		    fp.writefln("<ul>");
 		    toTOC(fp, posting, posting, 0);
-		    fwritefln(fp, "</ul>");
-		    fwritefln(fp, "</div>");
+		    fp.writefln("</ul>");
+		    fp.writefln("</div>");
 		}
 		postingstart = x;
 		toHTML(fp, posting, posting);
 		google(fp);
 		footer(fp);
-		fclose(fp);
+		fp.close();
 	    }
 
 	    prev = fname;
 	    prevTitle = posting.subject;
 
 	    if (posting.most_recent_date > pivot)
-		fwritefln(fpftp, "put ", fname);	// append to put.ftp
+		fpftp.writefln("put %s", fname);	// append to put.ftp
 
 	    // Determine year of posting
 	    int pyear = year;
 	    if (postings.length > 1000)
 		// if lots of posts, split into years
-		pyear = std.date.YearFromTime(posting.most_recent_date);
+		pyear = undead.date.yearFromTime(posting.most_recent_date);
 	    if (!(pyear in indexfiles))
 	    {	// Create new index file
 		string indexfilename = std.string.format("index%d.html", pyear);
-		fpindex = std.c.stdio.fopen(toStringz(std.path.join(todirng, indexfilename)), "w");
-		assert(fpindex);
+		fpindex = File(std.path.buildPath(todirng, indexfilename), "w");
 		header(fpindex, "news.digitalmars.com - " ~ ng, null, null, null, null);
 		indexfiles[pyear] = fpindex;
-		fwritefln(fpftp, "put %s", indexfilename);
+		fpftp.writefln("put %s", indexfilename);
 	    }
 
 	    // Add posting to index file
 	    fpindex = indexfiles[pyear];
-	    fwritefln(fpindex, "<tt>%s</tt> &nbsp;&nbsp;", posting.shortdate);
-	    fprintf(fpindex, "<a href=\"%.*s\">", fname);
+	    fpindex.writefln("<tt>%s</tt> &nbsp;&nbsp;", posting.shortdate);
+	    fpindex.writefln("<a href=\"%s\">", fname);
 	    escapeHTML(fpindex, posting.subject);
-	    fprintf(fpindex, "</a>&nbsp;<small>(%d)</small><br>\n", posting.nmessages);
+	    fpindex.writefln("</a>&nbsp;<small>(%s)</small><br>\n", posting.nmessages);
 	}
     }
     writefln("done writing html");
 
-    fwritefln(fpftp, "bye");
-    fclose(fpftp);
+    fpftp.writefln("bye");
+    fpftp.close();
 
     int[] years = indexfiles.keys;
     years.sort;
     foreach (y1, fp; indexfiles)
     {
-	fwritefln(fp, "<br>Other years:<br>");
+	fp.writefln("<br>Other years:<br>");
 	foreach_reverse (y; years)
 	{
 	    if (y1 == y)
-		fwritefln(fp, "%s ", y);
+		fp.writefln("%s ", y);
 	    else if (y == year)
 	    {
-		fwritefln(fp, "<a href=\"index.html\">%s</a> ", y);
+		fp.writefln("<a href=\"index.html\">%s</a> ", y);
 	    }
 	    else
 	    {
-		fwritefln(fp, "<a href=\"index%s.html\">%s</a> ", y, y);
+		fp.writefln("<a href=\"index%s.html\">%s</a> ", y, y);
 	    }
 	}
 
 	google(fp);
 	footer(fp);
-	fclose(fp);
+	fp.close();
     }
 
     writefln("Done");
@@ -374,7 +376,7 @@ void count(Posting p, Posting pstart, int depth)
 /*******************************
  * pstart = start of thread
  */
-void toTOC(FILE* fp, Posting p, Posting pstart, int depth)
+void toTOC(ref File fp, Posting p, Posting pstart, int depth)
 {
     assert(p);
     if (p.tocwritten)
@@ -385,14 +387,14 @@ void toTOC(FILE* fp, Posting p, Posting pstart, int depth)
 
     try
     {
-	fwritefln(fp, "<li>");
-	fwritefln(fp, "<a href=\"#N%s\">", p.filename);
+	fp.writefln("<li>");
+	fp.writefln("<a href=\"#N%s\">", p.filename);
 	escapeHTML(fp, p.from);
-	fwritefln(fp, "</a>");
-	fwritefln(fp, " ", p.shortdate);
-	fwritefln(fp, "</li>");
+	fp.writefln("</a>");
+	fp.writefln(" %s", p.shortdate);
+	fp.writefln("</li>");
     }
-    catch (Object o)
+    catch (Exception o)
     {
 	writefln("error writing posting %s %s", p.filename, o);
     }
@@ -414,7 +416,7 @@ void toTOC(FILE* fp, Posting p, Posting pstart, int depth)
 		if (!posting.tocwritten)
 		{   if (!ol)
 		    {	ol = true;
-			fwritefln(fp, "<ul>");
+			fp.writefln("<ul>");
 		    }
 		    if (!p.R)
 			p.R = posting;
@@ -430,10 +432,10 @@ void toTOC(FILE* fp, Posting p, Posting pstart, int depth)
 	}
     }
     if (ol)
-	fwritefln(fp, "</ul>");
+	fp.writefln("</ul>");
 }
 
-void toHTML(FILE* fp, Posting p, Posting pstart)
+void toHTML(ref File fp, Posting p, Posting pstart)
 {
     assert(p);
     if (p.written)
@@ -444,51 +446,51 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 
     try
     {
-	fwritef(fp, `<div id="Posting">`);
-	scope (success)	fwritef(fp, "</div>");
+	fp.writef( `<div id="Posting">`);
+	scope (success)	fp.writef( "</div>");
 
 	{
-	fwritef(fp, "<div id=\"PostingHeading\">");
-	scope (success) fwritefln(fp, "</div>");
+	fp.writef( "<div id=\"PostingHeading\">");
+	scope (success) fp.writefln("</div>");
 
-	fwritef(fp, `<a name="N%s">`, p.filename);
-	scope (success) fwritef(fp, "</a>");
+	fp.writef( `<a name="N%s">`, p.filename);
+	scope (success) fp.writef( "</a>");
 
 	if (p.U)
-	    fwritef(fp, "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-up.png\" border=0 alt=\"prev sibling\"></a> ", p.U.filename);
+	    fp.writef( "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-up.png\" border=0 alt=\"prev sibling\"></a> ", p.U.filename);
 	else
-	    fwritef(fp, "<img src=\"http://www.digitalmars.com/grey-up.png\" border=0> ");
+	    fp.writef( "<img src=\"http://www.digitalmars.com/grey-up.png\" border=0> ");
 
 	if (p.D)
-	    fwritef(fp, "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-down.png\" border=0 alt=\"next sibling\"></a> ", p.D.filename);
-	    //fwritef(fp, "<a href=\"#N%s\">&darr;</a> ", p.D.filename);
+	    fp.writef( "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-down.png\" border=0 alt=\"next sibling\"></a> ", p.D.filename);
+	    //fp.writef( "<a href=\"#N%s\">&darr;</a> ", p.D.filename);
 	else
-	    fwritef(fp, "<img src=\"http://www.digitalmars.com/grey-down.png\" border=0> ");
+	    fp.writef( "<img src=\"http://www.digitalmars.com/grey-down.png\" border=0> ");
 
 	if (p.L)
-	    fwritef(fp, "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-left.png\" border=0 alt=\"parent\"></a> ", p.L.filename);
+	    fp.writef( "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-left.png\" border=0 alt=\"parent\"></a> ", p.L.filename);
 	else
-	    fwritef(fp, "<img src=\"http://www.digitalmars.com/grey-left.png\" border=0> ");
+	    fp.writef( "<img src=\"http://www.digitalmars.com/grey-left.png\" border=0> ");
 
 	if (p.R)
-	    fwritef(fp, "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-right.png\" border=0 alt=\"reply\"></a> ", p.R.filename);
+	    fp.writef( "<a href=\"#N%s\"><img src=\"http://www.digitalmars.com/blue-right.png\" border=0 alt=\"reply\"></a> ", p.R.filename);
 	else
-	    fwritef(fp, "<img src=\"http://www.digitalmars.com/grey-right.png\" border=0> ");
+	    fp.writef( "<img src=\"http://www.digitalmars.com/grey-right.png\" border=0> ");
 
 	escapeHTML(fp, p.from);
 
 	version (READPHP)
 	{
-	    fwritef(fp,
-	       " <a href=\"http://www.digitalmars.com/pnews/read.php?server=news.digitalmars.com&group=%s&artnum=",
+	    fp.writef(
+	       " <a href=\"http://www.digitalmars.com/pnews/read.php?server=news.digitalmars.com&group=%s&artnum=%s%s",
 		p.newsgroups,
 		p.filename,
 		"\"> writes</a>:");
 	}
 	else
 	{
-	    fwritef(fp,
-		" <a href=\"http://www.digitalmars.com/drn-bin/wwwnews?%s/",
+	    fp.writef(
+		" <a href=\"http://www.digitalmars.com/drn-bin/wwwnews?%s/%s%s",
 		std.uri.encodeComponent(p.newsgroups),
 		p.filename,
 		"\"> writes</a>:");
@@ -496,8 +498,8 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	}
 
 	{
-	fwritefln(fp, `<pre class="PostingBody">`);
-	scope (success) fwritefln(fp, "</pre>");
+	fp.writefln(`<pre class="PostingBody">`);
+	scope (success) fp.writefln("</pre>");
 
 	int first = int.max;
 	int last = -1;
@@ -539,7 +541,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	    }
 	}
 
-	void writeQuote(int first, int last)
+	void writeQuote(size_t first, size_t last)
 	{
 	    // Remove leading blank lines
 	    while (first <= last)
@@ -560,13 +562,13 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	    int quote = 0;
 	    int quotefirst;
 	    int quotelast;
-	    foreach (i, inout line; p.msg[first .. last + 1])
+	    foreach (i, ref line; p.msg[first .. last + 1])
 	    {
 		if (line.length && line[0] == '>')
 		{
 		    if (!quote)
 		    {   quote = 1;
-			quotefirst = i;
+			quotefirst = cast(int)i;
 		    }
 		    line = line[1 .. $];
 		}
@@ -574,52 +576,52 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 		{
 		    if (!quote)
 		    {   quote = 1;
-			quotefirst = i;
+			quotefirst = cast(int)i;
 		    }
 		    line = line[2 .. $];
 		}
 		else if (quote)
 		{
-		    fwritefln(fp, "<pre class=\"PostingQuote\">");
+		    fp.writefln("<pre class=\"PostingQuote\">");
 		    writeQuote(first + quotefirst, first + i - 1);
-		    fwritefln(fp, "</pre><br>");
+		    fp.writefln("</pre><br>");
 		    quote = 0;
 		}
 		else
 		{   auto line2 = line;
 		    while (line2.length > 80)
 		    {	// Wrap long lines
-			auto j = std.string.rfind(line2[0..80], ' ');
+			auto j = std.string.lastIndexOf(line2[0..80], ' ');
 			if (j < 20)
 			{
-			    j = std.string.find(line2[20..$], ' ');
+			    j = std.string.indexOf(line2[20..$], ' ');
 			    if (j == -1 || j == line2.length - 1)
 				break;
 			}
 			writeLine(fp, line2[0 .. j]);
-			fwritefln(fp, "");
+			fp.writefln("");
 			line2 = line2[j + 1 .. $];
 		    }
 		    writeLine(fp, line2);
-		    fwritefln(fp, "");
+		    fp.writefln("");
 		}
 	    }
 	    if (quote)
 	    {
-		fwritefln(fp, "<pre class=\"PostingQuote\">");
+		fp.writefln("<pre class=\"PostingQuote\">");
 		writeQuote(quotefirst + first, last);
-		fwritefln(fp, "</pre><br>");
+		fp.writefln("</pre><br>");
 	    }
 	}
 
 	writeQuote(first, last);
 	}
 
-	fwritef(fp, `<div id="PostingFooting">`);
-	  fwritefln(fp, " %s", p.shortdate);
-	fwritefln(fp, "</div>");
+	fp.writef( `<div id="PostingFooting">`);
+	  fp.writefln(" %s", p.shortdate);
+	fp.writefln("</div>");
     }
-    catch (Object o)
+    catch (Exception o)
     {
 	writefln("error writing posting %s %s", p.filename, o);
     }
@@ -636,7 +638,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
 	foreach (string rf; posting.refs)
 	{   if (rf == p.msgid)
 	    {	toHTML(fp, posting, pstart);
-		d_time t = std.date.parse(posting.date);
+		d_time t = undead.date.parse(posting.date);
 		if (t > pstart.most_recent_date)
 		    pstart.most_recent_date = t;
 		break;
@@ -645,7 +647,7 @@ void toHTML(FILE* fp, Posting p, Posting pstart)
     }
 }
 
-void header(FILE* fp, string title, string prev, string next, string prevTitle, string nextTitle)
+void header(ref File fp, string title, string prev, string next, string prevTitle, string nextTitle)
 {
     if (prevTitle.length == 0)
 	prevTitle = "previous topic";
@@ -653,7 +655,7 @@ void header(FILE* fp, string title, string prev, string next, string prevTitle, 
     if (prevTitle.length == 0)
 	prevTitle = "next topic";
 
-    fwritefln(fp, `
+    fp.writefln(`
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en-US">
 <head>
@@ -662,7 +664,7 @@ void header(FILE* fp, string title, string prev, string next, string prevTitle, 
 
     escapeHTML(fp, title);
 
-    fwritefln(fp, `
+    fp.writefln(`
 </title>
 <link rel="stylesheet" type="text/css" href="%s" />
 <link rel="stylesheet" type="text/css" href="%s" media="print" />
@@ -682,26 +684,26 @@ void header(FILE* fp, string title, string prev, string next, string prevTitle, 
 
     if (prev || next)
     {
-	fwritefln(fp, "&nbsp;<a href=\"index.html\" title=\"topic index\"><img src=\"http://www.digitalmars.com/blue-index.png\" border=0></a>");
+	fp.writefln("&nbsp;<a href=\"index.html\" title=\"topic index\"><img src=\"http://www.digitalmars.com/blue-index.png\" border=0></a>");
 
 	if (prev)
-	{   fwritef(fp, `<a href="%s" title="`, prev);
+	{   fp.writef( `<a href="%s" title="`, prev);
 	    escapeHTML(fp, prevTitle);
-	    fwritefln(fp, `"><img src="http://www.digitalmars.com/blue-left.png" border=0></a>`);
+	    fp.writefln(`"><img src="http://www.digitalmars.com/blue-left.png" border=0></a>`);
 	}
 	else
-	    fwritefln(fp, "<img src=\"http://www.digitalmars.com/grey-left.png\" border=0>");
+	    fp.writefln("<img src=\"http://www.digitalmars.com/grey-left.png\" border=0>");
 
 	if (next)
-	{   fwritef(fp, `<a href="%s" title="`, next);
+	{   fp.writef( `<a href="%s" title="`, next);
 	    escapeHTML(fp, nextTitle);
-	    fwritefln(fp, `"><img src="http://www.digitalmars.com/blue-right.png" border=0></a>`);
+	    fp.writefln(`"><img src="http://www.digitalmars.com/blue-right.png" border=0></a>`);
 	}
 	else
-	    fwritefln(fp, "<img src=\"http://www.digitalmars.com/grey-right.png\" border=0>");
+	    fp.writefln("<img src=\"http://www.digitalmars.com/grey-right.png\" border=0>");
     }
 
-    fwritefln(fp, "%s", `
+    fp.writefln("%s", `
 </div>
 <div id="navigation">
 
@@ -807,19 +809,19 @@ google_page_url = document.location;
 <div id="content">
 `);
 
-    fwritef(fp, "<h2>");
+    fp.writef( "<h2>");
     escapeHTML(fp, title);
-    fwritefln(fp, "</h2>");
+    fp.writefln("</h2>");
 }
 
-void footer(FILE* fp)
+void footer(ref File fp)
 {
-    fwritefln(fp, "</div></BODY></HTML>");
+    fp.writefln("</div></BODY></HTML>");
 }
 
-void google(FILE* fp)
+void google(ref File fp)
 {
-    fwritef(fp, "%s", `
+    fp.writef( "%s", `
 <div id="footer_ad">
 <br><br><br><br>
 <center>
@@ -851,7 +853,7 @@ google_color_text = "000000";
 
 }
 
-void escapeHTML(FILE* fp, string s)
+void escapeHTML(ref File fp, string s)
 {
     // Note: replace "Mark Evans" with "Mark E."
 
@@ -860,23 +862,23 @@ void escapeHTML(FILE* fp, string s)
 	switch (c)
 	{
 	    case '<':
-		fputs("&lt;", fp);
+		fp.write("&lt;");
 		break;
 
 	    case '>':
-		fputs("&gt;", fp);
+		fp.write("&gt;");
 		break;
 
 	    case '&':
-		fputs("&amp;", fp);
+		fp.write("&amp;");
 		break;
 
 	    case '@':
-		fputs(" ", fp);
+		fp.write(" ");
 		break;
 
 	    default:
-		fputc(c, fp);
+		fp.write(c);
 		break;
 	}
     }
@@ -886,54 +888,51 @@ void escapeHTML(FILE* fp, string s)
  * Write line of posting text to output.
  */
 
-void writeLine(FILE* fp, string line)
+void writeLine(ref File fp, string line)
 {
-    int i;
-
-    i = std.string.ifind(line, 'h');
+    auto i = std.string.indexOf(line, 'h', CaseSensitive.no);
     if (i == -1)
 	goto L1;
 
     //if (line[i + 1] == 't') writefln("found h '%s'", line[i .. length]);
     string url;
-    url = isURL(line[i .. length]);
+    url = isURL(line[i .. $]);
     if (!url)
     {	escapeHTML(fp, line[0 .. i + 1]);
-	writeLine(fp, line[i + 1 .. length]);
+	writeLine(fp, line[i + 1 .. $]);
 	return;
     }
 
     //writefln("found url '%s'", url);
     escapeHTML(fp, line[0 .. i]);
-    string rest = line[i + url.length .. length];
+    string rest = line[i + url.length .. $];
 
     // Convert url from old wwwnews format to new format
     static string wwwnews = "http://www.digitalmars.com/drn-bin/wwwnews?";
     if (url.length > wwwnews.length && std.string.cmp(url[0 .. wwwnews.length], wwwnews) == 0)
     {
-	int j;
-	j = std.string.find(url[wwwnews.length .. length], '/');
+	auto j = std.string.indexOf(url[wwwnews.length .. $], '/');
 	if (j == -1)
 	    goto L2;
 
 	string ng = url[wwwnews.length .. wwwnews.length + j];
 	static string cpp = "c%2B%2B";
 	if (ng.length >= cpp.length && std.string.cmp(ng[0 .. cpp.length], cpp) == 0)
-	    ng = "c++" ~ ng[cpp.length .. length];
+	    ng = "c++" ~ ng[cpp.length .. $];
 
-	string article = url[wwwnews.length + j + 1 .. length];
+	string article = url[wwwnews.length + j + 1 .. $];
 
 	url = "http://www.digitalmars.com/pnews/read.php?server=news.digitalmars.com&group="
 	      ~ ng
 	      ~ "&artnum="
 	      ~ article;
-	fwritef(fp, `<a href="%s">%s/%s</a>`, url, ng, article);
+	fp.writef( `<a href="%s">%s/%s</a>`, url, ng, article);
 	goto L3;
     }
 
 L2:
     // Make url into clickable link
-    fwritef(fp, `<a href="%s">%s</a>`, url, url);
+    fp.writef( `<a href="%s">%s</a>`, url, url);
 L3:
     writeLine(fp, rest);
     return;
@@ -952,19 +951,19 @@ string isEmail(string s)
 {   size_t i;
 
     if (!isalpha(s[0]))
-	goto Lno;
+	return null;;
 
     for (i = 1; 1; i++)
     {
 	if (i == s.length)
-	    goto Lno;
+	    return null;
 	auto c = s[i];
 	if (isalnum(c))
 	    continue;
 	if (c == '-' || c == '_' || c == '.')
 	    continue;
 	if (c != '@')
-	    goto Lno;
+	    return null;
 	i++;
 	break;
     }
@@ -988,12 +987,9 @@ string isEmail(string s)
 	break;
     }
     if (!lastdot || (i - lastdot != 3 && i - lastdot != 4))
-	goto Lno;
+	return null;
 
     return s[0 .. i];
-
-Lno:
-    return null;
 }
 
 
@@ -1012,7 +1008,7 @@ string isURL(string s)
     size_t i;
 
     if (s.length <= 4)
-	goto Lno;
+	return null;
 
     //writefln("isURL(%s)", s);
     if (s.length > 7 && std.string.icmp(s[0 .. 7], "http://") == 0)
@@ -1022,7 +1018,7 @@ string isURL(string s)
 //    if (icmp(s[0 .. 4], "www.") == 0)
 //	i = 4;
     else
-	goto Lno;
+	return null;
 
     size_t lastdot;
     for (; i < s.length; i++)
@@ -1044,35 +1040,32 @@ string isURL(string s)
     }
     //if (!lastdot || (i - lastdot != 3 && i - lastdot != 4))
     if (!lastdot)
-	goto Lno;
+	return null;
 
     return s[0 .. i];
-
-Lno:
-    return null;
 }
 
 string toHtmlFilename(Posting p)
 {
-    string fname;
+    char[] fname = null;
     static d_time pivot = d_time_nan;
     static d_time pivot2 = d_time_nan;
 
     if (pivot == d_time_nan)
     {
-	pivot = std.date.parse("September 18, 2006");
-	pivot2 = std.date.parse("December 17, 2006");
+	pivot = undead.date.parse("September 18, 2006");
+	pivot2 = undead.date.parse("December 17, 2006");
     }
 
     if (p.pdate < pivot)
 	// Keep old way for link compatibility
-	fname = p.filename ~ ".html";
+	fname ~= p.filename ~ ".html";
     else
     {
 	fname = p.subject.dup;
 	if (fname.length && fname[0] == '-')
 	    fname[0] = '_';		// no leading -
-	foreach (inout c; fname)
+	foreach (ref c; fname)
 	{
 	    if (!isalnum(c) && c != '.' && c != '-')
 		c = '_';
@@ -1082,7 +1075,108 @@ string toHtmlFilename(Posting p)
 	fname ~= '_' ~ p.filename ~ ".html";
 	fname = std.string.squeeze(fname, "_");
 	if (fname[0] == '_' && isalnum(fname[1]))
-	    fname = fname[1 .. length];
+	    fname = fname[1 .. $];
     }
-    return fname;
+    return cast(string)fname;
 }
+
+/*********************************
+ * Convert string to integer.
+ */
+
+long atoi(const(char)[] s)
+{
+    return core.stdc.stdlib.atoi(toStringz(s));
+}
+
+char[] toString(ulong u)
+{   char[ulong.sizeof * 3] buffer;
+    int ndigits;
+    char[] result;
+
+    ndigits = 0;
+    while (u)
+    {
+        char c = cast(char)((u % 10) + '0');
+        u /= 10;
+        ndigits++;
+        buffer[buffer.length - ndigits] = c;
+    }
+    result = new char[ndigits];
+    result[] = buffer[buffer.length - ndigits .. buffer.length];
+    return result;
+}
+
+string[] listdir(string pathname)
+{
+    import std.file;
+    import std.path;
+    import std.algorithm;
+    import std.array;
+
+    string[] files = std.file.dirEntries(pathname, SpanMode.shallow)
+        .filter!(a => a.isFile)
+        .map!(a => std.path.baseName(a.name))
+        .array;
+
+    return files;
+}
+
+/**************************************
+ * Split s[] into an array of lines,
+ * using CR, LF, or CR-LF as the delimiter.
+ * The delimiter is not included in the line.
+ */
+
+string[] splitlines(string s)
+{
+    size_t i;
+    size_t istart;
+    size_t nlines;
+    string[] lines;
+
+    nlines = 0;
+    for (i = 0; i < s.length; i++)
+    {
+        auto c = s[i];
+        if (c == '\r' || c == '\n')
+        {
+            nlines++;
+            istart = i + 1;
+            if (c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+            {
+                i++;
+                istart++;
+            }
+        }
+    }
+    if (istart != i)
+        nlines++;
+
+    lines = new string[nlines];
+    nlines = 0;
+    istart = 0;
+    for (i = 0; i < s.length; i++)
+    {
+        auto c = s[i];
+        if (c == '\r' || c == '\n')
+        {
+            lines[nlines] = s[istart .. i];
+            nlines++;
+            istart = i + 1;
+            if (c == '\r' && i + 1 < s.length && s[i + 1] == '\n')
+            {
+                i++;
+                istart++;
+            }
+        }
+    }
+    if (istart != i)
+    {   lines[nlines] = s[istart .. i];
+        nlines++;
+    }
+
+    assert(nlines == lines.length);
+    return lines;
+}
+
