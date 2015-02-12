@@ -1,7 +1,8 @@
 FROMDIR=/home/walter/newsgroups/articles
 TODIR=/home/walter/newsgroups/todir
 SITEDIR=/usr/local/www/digitalmars.com/data/d/archives
-FOO=./foo2
+#FOO=./foo2
+FOO=./ngarchiver
 
 $(FOO) $(FROMDIR) $(TODIR) $(SITEDIR) D/gnu
 

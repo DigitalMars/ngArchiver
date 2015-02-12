@@ -23,14 +23,11 @@ import undead.date;
 
 version=READPHP;
 
-const string stylesheet = "http://www.digitalmars.com/forum.css";
-const string printsheet = "http://www.digitalmars.com/forum-print.css";
-//const string stylesheet = "style.css";
+immutable stylesheet = "http://www.digitalmars.com/forum.css";
+immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
-const string pivotdate = "June 1, 2011";
-//const string pivotdate = "September 1, 2009";
-//const string pivotdate = "January 1, 2001";
-
+// Do not write html files from before this date
+immutable pivotdate = "Jan 1, 2014";
 
 
 
@@ -75,12 +72,9 @@ int main(string[] args)
 
     if (args.length != 5)
     {
-	//writefln("Usage: foo fromdir sitedir");
-	writefln("Usage: foo fromdir todir sitedir ngdir");
+	writefln("Usage: ngarchiver fromdir todir sitedir ngdir");
 	exit(1);
     }
-//    auto dir = args[1];
-//    auto site = args[2];
 
     auto fromdir = args[1];
     auto todir = args[2];
@@ -103,7 +97,7 @@ int main(string[] args)
     writefln("todirng   = %s", todirng);
     writefln("sitedirng = %s", sitedirng);
 
-    writefln("Converting...");
+    writefln("Getting file names...");
 
     // Get all the files in directory fromdirng into files[]
     string[] files = listdir(fromdirng);
@@ -116,6 +110,11 @@ int main(string[] args)
   Lfiles:
     foreach (filename; files)
     {
+	// Posting filenames are simply numbers, incremented sequentially
+	if (filename.length > 8)
+	    continue;			// more than 99,999,999 articles? No way
+	if (filename.length > 0 && filename.length == '0')
+	    continue;			// no leading '0' in filename
 	foreach (c; filename)
 	{
 	    if (!core.stdc.ctype.isdigit(c))
@@ -192,10 +191,33 @@ int main(string[] args)
 	    }
 	}
 
-	//printf("from: %.*s\n", posting.from);
-	foreach (string line; posting.msg)
+	if (posting.refs.length == 0 &&
+	    std.string.indexOf(posting.subject, "Re: ") == 0)
 	{
-	    //writefln("--> ", line);
+	    /* It's a reply, but there are no references.
+	     * Try to find its antecedent.
+	     */
+	    //writefln("\n%s %s", n, posting.subject);
+	    for (size_t m = n; m--; )
+	    {
+		auto p = postings[m];
+		if (p && p.subject == posting.subject[4 .. $])
+		{
+		    posting.refs = new string[1];
+		    posting.refs[0] = p.msgid;
+		    //writefln("    found it %s", m);
+		    break;
+		}
+	    }
+	}
+
+	version (none)
+	{
+	    writefln("from: %s", posting.from);
+	    foreach (string line; posting.msg)
+	    {
+		writefln("--> %s", line);
+	    }
 	}
     }
 
@@ -221,8 +243,8 @@ int main(string[] args)
 	pivot = undead.date.parse(pivotdate);
     }
 
-    string prev;
-    string next;
+    string prev;	// previous thread filename
+    string next;	// next thread filename
 
     string prevTitle;
     string nextTitle;
@@ -434,6 +456,13 @@ void toTOC(ref File fp, Posting p, Posting pstart, int depth)
     if (ol)
 	fp.writefln("</ul>");
 }
+
+/***************************************
+ * Write out p and all its descendents to fp.
+ *
+ * Params:
+ *	pstart = posting that is the start of this thread
+ */
 
 void toHTML(ref File fp, Posting p, Posting pstart)
 {
