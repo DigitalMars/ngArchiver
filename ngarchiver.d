@@ -131,7 +131,7 @@ int main(string[] args)
 
     writefln("Reading postings...");
 
-    string ng;
+    string newsgroup;
     foreach (size_t n, Posting posting; postings)
     {
 	if (!posting)
@@ -164,8 +164,8 @@ int main(string[] args)
 		auto j = std.string.indexOf(posting.newsgroups, ',');
 		if (j > 0)
 		    posting.newsgroups = posting.newsgroups[0 .. j];
-		if (!ng)
-		    ng = posting.newsgroups;
+		if (!newsgroup && j <= 0)
+		    newsgroup = posting.newsgroups;
 	    }
 
 	    if (std.string.indexOf(line, "Message-ID: ") == 0)
@@ -265,7 +265,7 @@ int main(string[] args)
     writefln("Writing HTML files...");
 
     auto fpindex = File(std.path.buildPath(todirng, "index.html"), "w");
-    header(fpindex, "news.digitalmars.com - " ~ ng, null, null, null, null);
+    header(fpindex, "news.digitalmars.com - " ~ newsgroup, null, null, null, null);
     indexfiles[year] = fpindex;
 
     auto fpftp = File(std.path.buildPath(todirng, "put.ftp"), "w");
@@ -350,7 +350,7 @@ int main(string[] args)
 	    {	// Create new index file
 		string indexfilename = std.string.format("index%d.html", pyear);
 		fpindex = File(std.path.buildPath(todirng, indexfilename), "w");
-		header(fpindex, "news.digitalmars.com - " ~ ng, null, null, null, null);
+		header(fpindex, "news.digitalmars.com - " ~ newsgroup, null, null, null, null);
 		indexfiles[pyear] = fpindex;
 		fpftp.writefln("put %s", indexfilename);
 	    }
