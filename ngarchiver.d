@@ -27,7 +27,7 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Jan 1, 2014";
+immutable pivotdate = "Jan 1, 2015";
 
 
 
@@ -42,6 +42,7 @@ class Posting
     string subject;
     string newsgroups;
     string[] refs;
+    Posting[] replies;	// Postings that reply to this
     string boundary;
     string msgid;
     Posting L,R,U,D;
@@ -63,7 +64,6 @@ File[int] indexfiles;	// index files, key type is the year
 
 int[string] msgid2num;	// from message id to message number
 
-int postingstart;
 Posting[] postings;
 
 int main(string[] args)
@@ -221,6 +221,25 @@ int main(string[] args)
 	}
     }
 
+    // Fill in replies[]
+    foreach (Posting posting; postings)
+    {
+	if (!posting)
+	    continue;
+	int mostrecent = 0;
+	foreach (rf; posting.refs)
+	{
+	    auto pn = rf in msgid2num;
+	    if (pn && *pn > mostrecent)
+		mostrecent = *pn;
+	}
+	auto p = postings[mostrecent];
+	if (p)
+	{
+	    p.replies ~= posting;
+	}
+    }
+
     writefln("Writing HTML files...");
 
     auto fpindex = File(std.path.buildPath(todirng, "index.html"), "w");
@@ -274,26 +293,20 @@ int main(string[] args)
 
 	    string fname = toHtmlFilename(posting);
 
-	    {
-	    int x = postingstart;
-	    count(posting, posting, 0);
-	    postingstart = x;
-	    }
+	    posting.nmessages = 1 + countReplies(posting);
 
 	    if (posting.most_recent_date > pivot)
 	    {	// Write out the html file
 		auto fp = File(std.path.buildPath(todirng, fname), "w");
 		header(fp, posting.newsgroups ~ " - " ~ posting.subject, prev, next, prevTitle, nextTitle);
-		int x = postingstart;
 		if (!posting.tocwritten)
 		{
 		    fp.writefln("<div id=\"PostingTOC\">");
 		    fp.writefln("<ul>");
-		    toTOC(fp, posting, posting, 0);
+		    toTOC(fp, posting, 0);
 		    fp.writefln("</ul>");
 		    fp.writefln("</div>");
 		}
-		postingstart = x;
 		toHTML(fp, posting, posting);
 		google(fp);
 		footer(fp);
@@ -362,43 +375,30 @@ int main(string[] args)
 }
 
 /*******************************
+ * Transitively count up all the replies to p.
  */
-void count(Posting p, Posting pstart, int depth)
+int countReplies(Posting p)
 {
     assert(p);
     if (p.counted)
-	return;
+	return 0;
     p.counted = 1;
 
     //writefln("counting ", p.filename);
 
     // Count all replies
-    foreach (i, posting; postings[postingstart .. $])
+    int n = cast(int)p.replies.length;
+    foreach (reply; p.replies)
     {
-	if (i == postingstart && (!posting || posting.counted))
-	    postingstart++;
-
-	if (!posting)
-	    continue;
-
-	foreach (rf; posting.refs)
-	{   if (rf == p.msgid)
-	    {
-		if (!posting.counted)
-		{
-		    count(posting, pstart, depth + 1);
-		    pstart.nmessages++;
-		}
-		break;
-	    }
-	}
+	n += countReplies(reply);
     }
+    return n;
 }
 
 /*******************************
- * pstart = start of thread
+ * Write p to table of contents
  */
-void toTOC(ref File fp, Posting p, Posting pstart, int depth)
+void toTOC(ref File fp, Posting p,int depth)
 {
     assert(p);
     if (p.tocwritten)
@@ -424,35 +424,25 @@ void toTOC(ref File fp, Posting p, Posting pstart, int depth)
     // Append all replies
     bool ol;
     Posting U;
-    foreach (size_t i, Posting posting; postings[postingstart .. $])
+
+    foreach (posting; p.replies)
     {
-	if (i == postingstart && (!posting || posting.tocwritten))
-	    postingstart++;
-
-	if (!posting)
+	if (posting.tocwritten)
 	    continue;
-
-	foreach (string rf; posting.refs)
-	{   if (rf == p.msgid)
-	    {
-		if (!posting.tocwritten)
-		{   if (!ol)
-		    {	ol = true;
-			fp.writefln("<ul>");
-		    }
-		    if (!p.R)
-			p.R = posting;
-		    posting.L = p;
-		    posting.U = U;
-		    toTOC(fp, posting, pstart, depth + 1);
-		    if (U)
-			U.D = posting;
-		    U = posting;
-		}
-		break;
-	    }
+	if (!ol)
+	{   ol = true;
+	    fp.writefln("<ul>");
 	}
+	if (!p.R)
+	    p.R = posting;
+	posting.L = p;
+	posting.U = U;
+	toTOC(fp, posting, depth + 1);
+	if (U)
+	    U.D = posting;
+	U = posting;
     }
+
     if (ol)
 	fp.writefln("</ul>");
 }
@@ -656,23 +646,15 @@ void toHTML(ref File fp, Posting p, Posting pstart)
     }
 
     // Append all replies
-    foreach (size_t i, Posting posting; postings[postingstart .. postings.length])
+    foreach (posting; p.replies)
     {
-	if (i == postingstart && (!posting || posting.written))
-	    postingstart++;
-
-	if (!posting)
+	if (posting.written)
 	    continue;
 
-	foreach (string rf; posting.refs)
-	{   if (rf == p.msgid)
-	    {	toHTML(fp, posting, pstart);
-		d_time t = undead.date.parse(posting.date);
-		if (t > pstart.most_recent_date)
-		    pstart.most_recent_date = t;
-		break;
-	    }
-	}
+	toHTML(fp, posting, pstart);
+	d_time t = undead.date.parse(posting.date);
+	if (t > pstart.most_recent_date)
+	    pstart.most_recent_date = t;
     }
 }
 
