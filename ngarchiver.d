@@ -27,7 +27,7 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Jan 1, 2015";
+immutable pivotdate = "Dec 1, 2014";
 
 
 
@@ -151,6 +151,8 @@ int main(string[] args)
 		posting.pdate = undead.date.parse(posting.date);
 		posting.most_recent_date = posting.pdate;
 		posting.shortdate = undead.date.toDateString(posting.pdate)[4 .. $];
+		if (year == undead.date.yearFromTime(posting.pdate))
+		    posting.shortdate = posting.shortdate[0 .. $ - 5];
 	    }
 
 	    if (std.string.indexOf(line, "Subject: ") == 0)
