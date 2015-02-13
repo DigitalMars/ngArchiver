@@ -27,7 +27,7 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Jan 1, 2015";
+immutable pivotdate = "Jan 1, 2014";
 
 
 
@@ -713,7 +713,11 @@ void extractMsg(Posting p, ref string[] msg)
 		line[0 .. 6] == "begin " &&
 		isdigit(line[6]))
 	    {
-		break;
+		if (first == int.max)
+		{
+		    msg = msg[0 .. 0];
+		    return;
+		}
 	    }
 	    if (i < first)
 		first = i;
