@@ -425,7 +425,31 @@ void toTOC(ref File fp, Posting p,int depth)
     {
 	fp.writefln("<li>");
 	fp.writefln("<a href=\"#N%s\">", p.filename);
-	escapeHTML(fp, p.from);
+
+	/* Strip "" and email address from p.from
+	 */
+	auto from = p.from;
+	if (from.length > 4)
+	{
+	    if (from[0] == '"')
+	    {
+		auto i = lastIndexOf(from, '"');
+		if (i > 1)
+		    from = from[1 .. i];
+	    }
+	    else if (from[$ - 1] == '>')
+	    {
+		auto i = indexOf(from, '<');
+		if (i > 0)
+		{
+		    if (from[i - 1] == ' ')
+			--i;
+		    from = from[0 .. i];
+		}
+	    }
+	}
+	escapeHTML(fp, from);
+
 	fp.writefln("</a>");
 	fp.writefln(" %s", p.shortdate);
 	fp.writefln("</li>");
