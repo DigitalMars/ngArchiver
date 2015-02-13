@@ -27,7 +27,7 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Dec 1, 2014";
+immutable pivotdate = "Jan 1, 2015";
 
 
 
@@ -239,6 +239,8 @@ int main(string[] args)
 		writefln("--> %s", line);
 	    }
 	}
+
+	extractMsg(posting, posting.msg);
     }
 
     // Fill in replies[]
@@ -457,8 +459,18 @@ void toTOC(ref File fp, Posting p,int depth)
 	escapeHTML(fp, from);
 
 	fp.writefln("</a>");
+
+	int totalLines, quotedLines;
+	auto firstline = messageStats(p.msg, totalLines, quotedLines);
+	fp.writefln(" (%d/%d)", totalLines - quotedLines, totalLines);
+
 	fp.writefln(" %s", p.shortdate);
-	fp.writefln("</li>");
+
+	if (firstline.length > 30)
+	    firstline = firstline[0 .. 30];
+	fp.writefln(" <small>%s...</small>", firstline);
+
+	fp.writeln("</li>");
     }
     catch (Exception o)
     {
@@ -564,8 +576,6 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 	fp.writefln(`<pre class="PostingBody">`);
 	scope (success) fp.writefln("</pre>");
 
-	extractMsg(p, p.msg);
-
 	void writeQuote(size_t first, size_t last)
 	{
 	    // Remove leading blank lines
@@ -584,7 +594,7 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 	    }
 	    if (first > last)
 		return;
-	    int quote = 0;
+	    bool quote = false;
 	    int quotefirst;
 	    int quotelast;
 	    foreach (i, ref line; p.msg[first .. last + 1])
@@ -592,7 +602,7 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 		if (line.length && line[0] == '>')
 		{
 		    if (!quote)
-		    {   quote = 1;
+		    {   quote = true;
 			quotefirst = cast(int)i;
 		    }
 		    line = line[1 .. $];
@@ -600,20 +610,21 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 		else if (line.length >= 2 && line[0] == ' ' && line[1] == '>')
 		{
 		    if (!quote)
-		    {   quote = 1;
+		    {   quote = true;
 			quotefirst = cast(int)i;
 		    }
 		    line = line[2 .. $];
 		}
-		else if (quote)
-		{
-		    fp.writefln("<pre class=\"PostingQuote\">");
-		    writeQuote(first + quotefirst, first + i - 1);
-		    fp.writefln("</pre><br>");
-		    quote = 0;
-		}
 		else
-		{   auto line2 = line;
+		{
+		    if (quote)
+		    {
+			fp.writefln("<pre class=\"PostingQuote\">");
+			writeQuote(first + quotefirst, first + i - 1);
+			fp.writefln("</pre><br>");
+			quote = false;
+		    }
+		    auto line2 = line;
 		    while (line2.length > 80)
 		    {	// Wrap long lines
 			auto j = std.string.lastIndexOf(line2[0..80], ' ');
@@ -721,6 +732,38 @@ void extractMsg(Posting p, ref string[] msg)
 	    break;
     }
     msg = msg[first .. last + 1];
+}
+
+/*****************************************
+ * Get message stats.
+ */
+string messageStats(string[] msg, out int totalLines, out int quotedLines)
+{
+    string firstline;
+    foreach (line; msg)
+    {
+	if (line.length == 0)
+	    continue;
+	++totalLines;
+	if (line[0] == '>' ||
+	    (line.length > 1 && line[0] == ' ' && line[1] == '>'))
+	{
+	    if (line[0] == '>' && line.length > 1 ||
+		line.length > 2)
+	    {
+		++quotedLines;
+		if (totalLines - quotedLines <= 2)
+		    firstline = null;
+	    }
+	    else
+		--totalLines;	// blank line, do not count it
+	}
+	else if (!firstline)
+	    firstline = line;
+    }
+    assert(quotedLines <= totalLines);
+    assert(totalLines <= msg.length);
+    return firstline;
 }
 
 void header(ref File fp, string title, string prev, string next, string prevTitle, string nextTitle)
