@@ -174,6 +174,18 @@ int main(string[] args)
 	    if (std.string.indexOf(line, "References: ") == 0)
 	    {	string refs = line[12 .. line.length];
 		posting.refs = std.string.split(refs);
+		// Might be continued on next line(s)
+		for (auto j = i + 1; j < posting.lines.length; ++j)
+		{
+		    auto rline = posting.lines[j];
+		    if (rline.length > 2 &&
+			(rline[0] == ' ' || rline[0] == '\t'))
+		    {
+			posting.refs ~= std.string.split(rline[1 .. $]);
+		    }
+		    else
+		        break;
+		}
 	    }
 
 	    auto b = std.string.indexOf(line, "boundary=\"");
