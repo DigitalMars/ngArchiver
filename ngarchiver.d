@@ -190,12 +190,18 @@ int main(string[] args)
 		}
 	    }
 
-	    auto b = std.string.indexOf(line, "boundary=\"");
+	    auto b = std.string.indexOf(line, "boundary=");
 	    if (b >= 0)
-	    {	b += 10;		// skip over 'boundary='
-		auto e = std.string.indexOf(line[b .. line.length], '"');
-		if (e >= 0)
-		    posting.boundary = line[b .. b + e];
+	    {	b += 9;		// skip over 'boundary='
+		if (line[b] == '"')
+		{
+		    ++b;
+		    auto e = std.string.indexOf(line[b .. line.length], '"');
+		    if (e >= 0)
+			posting.boundary = line[b .. b + e];
+		}
+		else
+		    posting.boundary = line[b .. $];
 	    }
 
 	    if (line.length == 0)
@@ -558,45 +564,7 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 	fp.writefln(`<pre class="PostingBody">`);
 	scope (success) fp.writefln("</pre>");
 
-	int first = int.max;
-	int last = -1;
-	if (p.boundary.length)
-	{   // Only do the first section
-	    int state;
-
-	    foreach (int i, string line; p.msg)
-	    {
-		if (line.length > 2 && line[2 .. line.length] == p.boundary)
-		{   if (state)
-			break;
-		    state++;
-		}
-		else if (state)
-		{
-		    if (i < first)
-			first = i;
-		    if (i > last)
-			last = i;
-		}
-	    }
-	}
-	else
-	{
-	    foreach (int i, string line; p.msg)
-	    {
-		// Look for 'begin OOO filename', and ignore it
-		if (line.length > 9 &&
-		    line[0 .. 6] == "begin " &&
-		    isdigit(line[6]))
-		{
-		    break;
-		}
-		if (i < first)
-		    first = i;
-		if (i > last)
-		    last = i;
-	    }
-	}
+	extractMsg(p, p.msg);
 
 	void writeQuote(size_t first, size_t last)
 	{
@@ -671,7 +639,8 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 	    }
 	}
 
-	writeQuote(first, last);
+	if (p.msg.length)
+	    writeQuote(0, p.msg.length - 1);
 	}
 
 	fp.writef( `<div id="PostingFooting">`);
@@ -694,6 +663,64 @@ void toHTML(ref File fp, Posting p, Posting pstart)
 	if (t > pstart.most_recent_date)
 	    pstart.most_recent_date = t;
     }
+}
+
+/*******************************
+ * Rewrites msg[] to be subset of lines
+ * that form the message body.
+ */
+void extractMsg(Posting p, ref string[] msg)
+{
+    int first = int.max;
+    int last = -1;
+    if (p.boundary.length)
+    {   // Only do the first section
+	int state;
+
+	foreach (int i, string line; msg)
+	{
+	    if (line.length > 2 && line[2 .. line.length] == p.boundary)
+	    {   if (state)
+		    break;
+		state++;
+	    }
+	    else if (state)
+	    {
+		if (i < first)
+		    first = i;
+		if (i > last)
+		    last = i;
+	    }
+	}
+    }
+    else
+    {
+	foreach (int i, string line; msg)
+	{
+	    // Look for 'begin OOO filename', and ignore it
+	    if (line.length > 9 &&
+		line[0 .. 6] == "begin " &&
+		isdigit(line[6]))
+	    {
+		break;
+	    }
+	    if (i < first)
+		first = i;
+	    if (i > last)
+		last = i;
+	}
+    }
+    foreach (i; first .. last + 1)
+    {
+	string line = msg[i];
+	if (std.string.indexOf(line, "Content-Type: ") == 0)
+	    ++first;
+	else if (std.string.indexOf(line, "Content-Transfer-Encoding: ") == 0)
+	    ++first;
+	else
+	    break;
+    }
+    msg = msg[first .. last + 1];
 }
 
 void header(ref File fp, string title, string prev, string next, string prevTitle, string nextTitle)
