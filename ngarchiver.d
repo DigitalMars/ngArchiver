@@ -27,7 +27,7 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Jan 1, 2014";
+immutable pivotdate = "Jan 1, 2012";
 
 
 
@@ -138,7 +138,11 @@ int main(string[] args)
 	    continue;
 	std.stdio.writef("%s\r", posting.filename);
 	posting.filebody = cast(string)std.file.read(std.path.buildPath(fromdirng, posting.filename));
+	if (posting.filebody.length == 0)
+	    continue;
 	posting.lines = splitlines(posting.filebody);
+	if (posting.lines.length == 0)
+	    continue;
 
 	// Parse the file
 	foreach (size_t i, string line; posting.lines)
@@ -682,6 +686,8 @@ void toHTML(ref File fp, Posting p, Posting pstart)
  */
 void extractMsg(Posting p, ref string[] msg)
 {
+    if (!msg.length)
+	return;
     int first = int.max;
     int last = -1;
     if (p.boundary.length)
@@ -846,13 +852,14 @@ void header(ref File fp, string title, string prev, string next, string prevTitl
 <h2>D Programming</h2>
 <ul>
 <li><a href="http://www.digitalmars.com/d/archives/digitalmars/D">digitalmars.D</a></li>
+<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/announce">digitalmars.D.announce</a></li>
+<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/learn">digitalmars.D.learn</a></li>
+<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/ldc">digitalmars.D.ldc</a></li>
 <li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/bugs">digitalmars.D.bugs</a></li>
 <li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/dtl">digitalmars.D.dtl</a></li>
 <li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/ide">digitalmars.D.ide</a></li>
-<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/dwt">digitalmars.D.dwt</a></li>
-<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/announce">digitalmars.D.announce</a></li>
-<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/learn">digitalmars.D.learn</a></li>
 <li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/debugger">digitalmars.D.debugger</a></li>
+<li><a href="http://www.digitalmars.com/d/archives/digitalmars/D/dwt">digitalmars.D.dwt</a></li>
 <li><a href="http://www.digitalmars.com/d/archives/D/gnu">D.gnu</a></li>
 <li><a href="http://www.digitalmars.com/d/archives/">D</a></li>
 </ul>
