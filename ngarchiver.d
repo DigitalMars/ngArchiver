@@ -28,7 +28,7 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Jan 1, 2012";
+immutable pivotdate = "Jan 1, 2014";
 
 
 
@@ -270,7 +270,7 @@ int main(string[] args)
     writefln("Writing HTML files...");
 
     auto fpindex = File(std.path.buildPath(todirng, "index.html"), "w");
-    header(fpindex, "news.digitalmars.com - " ~ newsgroup, null, null, null, null);
+    header(fpindex, "news.digitalmars.com - " ~ newsgroup, null, null, null, null, amazonDP(postings.length));
     indexfiles[year] = fpindex;
 
     auto fpftp = File(std.path.buildPath(todirng, "put.ftp"), "w");
@@ -325,7 +325,7 @@ int main(string[] args)
 	    if (posting.most_recent_date > pivot)
 	    {	// Write out the html file
 		auto fp = new OutBuffer();
-		header(fp, posting.newsgroups ~ " - " ~ posting.subject, prev, next, prevTitle, nextTitle);
+		header(fp, posting.newsgroups ~ " - " ~ posting.subject, prev, next, prevTitle, nextTitle, amazonDP(i));
 		if (!posting.tocwritten)
 		{
 		    fp.writefln("<div id=\"PostingTOC\">");
@@ -364,7 +364,7 @@ int main(string[] args)
 	    {	// Create new index file
 		string indexfilename = std.string.format("index%d.html", pyear);
 		fpindex = File(std.path.buildPath(todirng, indexfilename), "w");
-		header(fpindex, "news.digitalmars.com - " ~ newsgroup, null, null, null, null);
+		header(fpindex, "news.digitalmars.com - " ~ newsgroup, null, null, null, null, amazonDP(pyear));
 		indexfiles[pyear] = fpindex;
 		fpftp.writefln("put %s", indexfilename);
 	    }
@@ -786,7 +786,7 @@ string messageStats(string[] msg, out int totalLines, out int quotedLines)
     return firstline;
 }
 
-void header(R)(ref R fp, string title, string prev, string next, string prevTitle, string nextTitle)
+void header(R)(ref R fp, string title, string prev, string next, string prevTitle, string nextTitle, string dp)
 {
     if (prevTitle.length == 0)
 	prevTitle = "previous topic";
@@ -842,7 +842,7 @@ void header(R)(ref R fp, string title, string prev, string next, string prevTitl
 	    fp.writefln("<img src=\"http://www.digitalmars.com/grey-right.png\" border=0>");
     }
 
-    fp.writefln("%s", `
+    fp.writefln("%s%s%s", `
 </div>
 <div id="navigation">
 
@@ -928,7 +928,11 @@ google_color_text = "000000";
 </script>
 
 <hr>
-<script src="http://www.gmodules.com/ig/ifr?url=http://www.google.com/ig/modules/translatemypage.xml&up_source_language=en&w=160&h=60&title=&border=&output=js"></script>
+<center>
+<iframe src="http://rcm.amazon.com/e/cm?t=classicempire&o=1&p=8&l=as1&asins=`,
+dp,
+`&fc1=000000&IS2=1&lt1=_blank&lc1=0000FF&bc1=000000&bg1=FFFFFF&f=ifr" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
+</center>
 </div>
 
 </div>
@@ -1320,3 +1324,27 @@ string[] splitlines(string s)
     return lines;
 }
 
+string amazonDP(size_t n)
+{
+    immutable string[] dps =
+    [
+	"0990582906",
+	"1491904909",
+	"0321751043",
+	"098478280X",
+	"1118008189",
+	"0262033844",
+	"0071784225",
+	"0201633612",
+	"1479274836",
+	"032157351X",
+	"0132350882",
+	"020161622X",
+	"0596007124",
+	"0735619670",
+	"1617292397",
+	"0387310738",
+    ];
+
+    return dps[n % $];
+}
