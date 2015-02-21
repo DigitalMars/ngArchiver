@@ -18,6 +18,7 @@ import std.conv;
 import std.format;
 import std.array;
 import std.utf;
+import std.outbuffer;
 
 import undead.date;
 
@@ -275,9 +276,9 @@ int main(string[] args)
     auto fpftp = File(std.path.buildPath(todirng, "put.ftp"), "w");
     version(none)
     {
-	fpftp.writeln("name");
-	fpftp.writeln("password");
-	fpftp.writeln("bin");
+	fpftp.writefln("name");
+	fpftp.writefln("password");
+	fpftp.writefln("bin");
     }
     fpftp.writefln("cd %s", sitedirng);
     fpftp.writefln("put index.html");
@@ -323,7 +324,7 @@ int main(string[] args)
 
 	    if (posting.most_recent_date > pivot)
 	    {	// Write out the html file
-		auto fp = File(std.path.buildPath(todirng, fname), "w");
+		auto fp = new OutBuffer();
 		header(fp, posting.newsgroups ~ " - " ~ posting.subject, prev, next, prevTitle, nextTitle);
 		if (!posting.tocwritten)
 		{
@@ -336,7 +337,16 @@ int main(string[] args)
 		toHTML(fp, posting, posting);
 		google(fp);
 		footer(fp);
-		fp.close();
+		auto bytes = fp.toBytes();
+		auto n = std.path.buildPath(todirng, fname);
+
+		// Only write file if it is different - saves the SSD drive
+		if (!std.file.exists(n) ||
+		    cast(ubyte[])std.file.read(n) != bytes[])
+		{
+		    //writeln("file is different");
+		    std.file.write(n, bytes);
+		}
 	    }
 
 	    prev = fname;
@@ -424,7 +434,7 @@ int countReplies(Posting p)
 /*******************************
  * Write p to table of contents
  */
-void toTOC(ref File fp, Posting p,int depth)
+void toTOC(R)(ref R fp, Posting p,int depth)
 {
     assert(p);
     if (p.tocwritten)
@@ -474,7 +484,7 @@ void toTOC(ref File fp, Posting p,int depth)
 	    firstline = firstline[0 .. 30];
 	fp.writefln(" <small>%s...</small>", firstline);
 
-	fp.writeln("</li>");
+	fp.writefln("</li>");
     }
     catch (Exception o)
     {
@@ -514,7 +524,7 @@ void toTOC(ref File fp, Posting p,int depth)
  *	pstart = posting that is the start of this thread
  */
 
-void toHTML(ref File fp, Posting p, Posting pstart)
+void toHTML(R)(ref R fp, Posting p, Posting pstart)
 {
     assert(p);
     if (p.written)
@@ -776,7 +786,7 @@ string messageStats(string[] msg, out int totalLines, out int quotedLines)
     return firstline;
 }
 
-void header(ref File fp, string title, string prev, string next, string prevTitle, string nextTitle)
+void header(R)(ref R fp, string title, string prev, string next, string prevTitle, string nextTitle)
 {
     if (prevTitle.length == 0)
 	prevTitle = "previous topic";
@@ -944,12 +954,12 @@ google_page_url = document.location;
     fp.writefln("</h2>");
 }
 
-void footer(ref File fp)
+void footer(R)(ref R fp)
 {
     fp.writefln("</div></BODY></HTML>");
 }
 
-void google(ref File fp)
+void google(R)(ref R fp)
 {
     fp.writef( "%s", `
 <div id="footer_ad">
@@ -983,7 +993,7 @@ google_color_text = "000000";
 
 }
 
-void escapeHTML(ref File fp, string s)
+void escapeHTML(R)(ref R fp, string s)
 {
     // Note: replace "Mark Evans" with "Mark E."
 
@@ -1018,7 +1028,7 @@ void escapeHTML(ref File fp, string s)
  * Write line of posting text to output.
  */
 
-void writeLine(ref File fp, string line)
+void writeLine(R)(ref R fp, string line)
 {
     auto i = std.string.indexOf(line, 'h', CaseSensitive.no);
     if (i == -1)
