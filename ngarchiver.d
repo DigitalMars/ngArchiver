@@ -4,6 +4,8 @@
 
 /* Better formatting:
  * http://thread.gmane.org/gmane.comp.version-control.git/57643/focus=57918
+ * Message Threading:
+ * https://www.jwz.org/doc/threading.html
  */
 
 import core.stdc.stdio;
@@ -28,7 +30,9 @@ immutable stylesheet = "http://www.digitalmars.com/forum.css";
 immutable printsheet = "http://www.digitalmars.com/forum-print.css";
 
 // Do not write html files from before this date
-immutable pivotdate = "Jan 1, 2014";
+//immutable pivotdate = "Jan 1, 2014";
+immutable pivotdate = "Feb 1, 2016";
+//immutable pivotdate = "Aug 1, 2001";
 
 
 
@@ -480,9 +484,10 @@ void toTOC(R)(ref R fp, Posting p,int depth)
 
 	fp.writefln(" %s", p.shortdate);
 
-	if (firstline.length > 30)
-	    firstline = firstline[0 .. 30];
-	fp.writefln(" <small>%s...</small>", firstline);
+	if (firstline.length > 72)
+	    fp.writefln(" <small>%s...</small>", firstline[0 .. 72]);
+	else
+	    fp.writefln(" <small>%s</small>", firstline);
 
 	fp.writefln("</li>");
     }
@@ -635,8 +640,10 @@ void toHTML(R)(ref R fp, Posting p, Posting pstart)
 		    {
 			fp.writefln("<pre class=\"PostingQuote\">");
 			writeQuote(first + quotefirst, first + i - 1);
-			fp.writefln("</pre><br>");
+			fp.writefln("</pre>");
 			quote = false;
+			if (line.length == 0)
+			    continue;			// no blank line needed after quoted text
 		    }
 		    auto line2 = line;
 		    while (line2.length > 80)
@@ -660,7 +667,7 @@ void toHTML(R)(ref R fp, Posting p, Posting pstart)
 	    {
 		fp.writefln("<pre class=\"PostingQuote\">");
 		writeQuote(quotefirst + first, last);
-		fp.writefln("</pre><br>");
+		fp.writefln("</pre>");
 	    }
 	}
 
@@ -1328,6 +1335,11 @@ string amazonDP(size_t n)
 {
     immutable string[] dps =
     [
+	"0321635361",	// The D Programming Language
+	"1515074609",	// Programming in D: Tutorial and Reference
+	"1783287217"	// D Cookbook
+	"1783552484",	// Learning D
+
 	"0990582906",
 	"1491904909",
 	"0321751043",
@@ -1344,6 +1356,9 @@ string amazonDP(size_t n)
 	"0735619670",
 	"1617292397",
 	"0387310738",
+	"1593272200",
+	"0321637739",
+	"1449339530",
     ];
 
     return dps[n % $];
