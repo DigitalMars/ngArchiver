@@ -849,7 +849,7 @@ void header(R)(ref R fp, string title, string prev, string next, string prevTitl
 	    fp.writefln("<img src=\"http://www.digitalmars.com/grey-right.png\" border=0>");
     }
 
-    fp.writefln("%s%s%s", `
+    fp.writefln("%s%s%s%s%s", `
 </div>
 <div id="navigation">
 
@@ -936,9 +936,11 @@ google_color_text = "000000";
 
 <hr>
 <center>
-<iframe src="http://rcm.amazon.com/e/cm?t=classicempire&o=1&p=8&l=as1&asins=`,
+<iframe style="width:120px;height:240px;" marginwidth="0" marginheight="0" scrolling="no" frameborder="0" src="//ws-na.amazon-adsystem.com/widgets/q?ServiceVersion=20070822&OneJS=1&Operation=GetAdHtml&MarketPlace=US&source=ac&ref=tf_til&ad_type=product_link&tracking_id=classicempire&marketplace=amazon&region=US&placement=`,
 dp,
-`&fc1=000000&IS2=1&lt1=_blank&lc1=0000FF&bc1=000000&bg1=FFFFFF&f=ifr" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
+`&asins=`,
+dp,
+`&linkId=GPBMDJNW4AUOBDFQ&show_border=true&link_opens_in_new_window=true"></iframe>
 </center>
 </div>
 
