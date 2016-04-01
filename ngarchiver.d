@@ -1341,26 +1341,30 @@ string amazonDP(size_t n)
 	"1515074609",	// Programming in D: Tutorial and Reference
 	"1783287217"	// D Cookbook
 	"1783552484",	// Learning D
+	"1590599608",	// Learn to Tango with D
 
-	"0990582906",
-	"1491904909",
-	"0321751043",
-	"098478280X",
-	"1118008189",
-	"0262033844",
-	"0071784225",
-	"0201633612",
-	"1479274836",
-	"032157351X",
-	"0132350882",
-	"020161622X",
-	"0596007124",
-	"0735619670",
-	"1617292397",
-	"0387310738",
-	"1593272200",
-	"0321637739",
-	"1449339530",
+	"0882756427",	// Computer Approximations
+	"0138220646",	// Software Manual for the Elementary functions
+
+	"0990582906",	// Game Programming Patterns
+	"1491904909",	// User Story Mapping: Discover the Whole Story, Build the Right Product
+	"0321751043",	// The Art of Computer Programming, Volumes 1-4A Boxed Set
+	"098478280X",	// Cracking the Coding Interview
+	"1118008189",	// HTML and CSS: Design and Build Websites
+	"0262033844",	// Introduction to Algorithms, 3rd Edition
+	"0071784225",	// Programming  Arduino Getting Started with Sketches
+	"0201633612",	// Design Patters: Elements of Reusable OBject-Oriented Software
+	"1479274836",	// Elements of Programming Interviews: The Insiders' Guide
+	"032157351X",	// Algorithms (4th Edition)
+	"0132350882",	// Clean Code: A Handbook of Agile Software Craftsmanship
+	"020161622X",	// The Pragmatic Programmer: From Journeyman to Master
+	"0596007124",	// Head First Design Patterns
+	"0735619670",	// Code Complete: A Practical Handbook of Software Construction, Second Edition
+	"1617292397",	// Soft Skills: The software developer's life manual
+	"0387310738",	// Pattern Recognition and Machine Learning
+	"1593272200",	// The Linux Programming Interface: A Linux and UNIX System Programming Handbook
+	"0321637739",	// Advanced Programming in the UNIX Environment, 3rd Edition
+	"1449339530",	// Linux System Programming: Talking Directly to the Kernel and C Library
     ];
 
     return dps[n % $];
