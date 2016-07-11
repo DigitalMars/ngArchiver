@@ -78,6 +78,12 @@ int main(string[] args)
     if (args.length != 5)
     {
 	writefln("Usage: ngarchiver fromdir todir sitedir ngdir");
+	/*
+	 * fromdir = directory of where to read the ng postings
+	 * todir = directory of where to write the html files
+	 * sitedir = directory where the html files will reside on the web site
+	 * ngdir = subdirectory to append to fromdir, todir and sitedir
+	 */
 	exit(1);
     }
 
@@ -109,30 +115,7 @@ int main(string[] args)
 
     writefln("%s files", files.length);
 
-    // Determine which of the files in files[] are postings,
-    // and put them in postings[]
-    postings.length = files.length;
-  Lfiles:
-    foreach (filename; files)
-    {
-	// Posting filenames are simply numbers, incremented sequentially
-	if (filename.length > 8)
-	    continue;			// more than 99,999,999 articles? No way
-	if (filename.length > 0 && filename.length == '0')
-	    continue;			// no leading '0' in filename
-	foreach (c; filename)
-	{
-	    if (!core.stdc.ctype.isdigit(c))
-		continue Lfiles;
-	}
-	auto n = atoi(filename);
-	if (toString(n) != filename)
-	    continue;
-
-	if (n >= postings.length)
-	    postings.length = n + 1;
-	postings[n] = new Posting(filename);
-    }
+    postings = filesToPostings(files);
 
     writefln("Reading postings...");
 
@@ -413,6 +396,43 @@ int main(string[] args)
     writefln("Done");
     return 0;
 }
+
+/****************************************************
+ * Determine which of the files in files[] are postings,
+ * and return that subset.
+ * Params:
+ *	files = array of file names
+ * Returns:
+ *	subset of files[] that are possibly postings
+ */
+Posting[] filesToPostings(string[] files)
+{
+    Posting[] postings;
+    postings.length = files.length;
+  Lfiles:
+    foreach (filename; files)
+    {
+	// Posting filenames are simply numbers, incremented sequentially
+	if (filename.length > 8)
+	    continue;			// more than 99,999,999 articles? No way
+	if (filename.length > 0 && filename.length == '0')
+	    continue;			// no leading '0' in filename
+	foreach (c; filename)
+	{
+	    if (!core.stdc.ctype.isdigit(c))
+		continue Lfiles;
+	}
+	auto n = atoi(filename);
+	if (toString(n) != filename)
+	    continue;
+
+	if (n >= postings.length)
+	    postings.length = n + 1;
+	postings[n] = new Posting(filename);
+    }
+    return postings;
+}
+
 
 /*******************************
  * Transitively count up all the replies to p.
@@ -1341,7 +1361,9 @@ string amazonDP(size_t n)
 	"1515074609",	// Programming in D: Tutorial and Reference
 	"1783287217"	// D Cookbook
 	"1783552484",	// Learning D
+	"178528889X",	// D Web Development
 	"1590599608",	// Learn to Tango with D
+	"3939084697",	// Programmieren in D
 
 	"0882756427",	// Computer Approximations
 	"0138220646",	// Software Manual for the Elementary functions
@@ -1365,6 +1387,7 @@ string amazonDP(size_t n)
 	"1593272200",	// The Linux Programming Interface: A Linux and UNIX System Programming Handbook
 	"0321637739",	// Advanced Programming in the UNIX Environment, 3rd Edition
 	"1449339530",	// Linux System Programming: Talking Directly to the Kernel and C Library
+	"0974364924",	// The Software Vectorization Handbook
     ];
 
     return dps[n % $];
