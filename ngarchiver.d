@@ -39,7 +39,6 @@ immutable pivotdate = "Feb 1, 2016";
 class Posting
 {
     string filename;
-    string filebody;
     string[] lines;
     string from;
     string date;
@@ -118,17 +117,13 @@ int main(string[] args)
     postings = filesToPostings(files);
 
     writefln("Reading postings...");
+    readPostings(fromdirng, postings);
 
     string newsgroup;
     foreach (size_t n, Posting posting; postings)
     {
 	if (!posting)
 	    continue;
-	std.stdio.writef("%s\r", posting.filename);
-	posting.filebody = cast(string)std.file.read(std.path.buildPath(fromdirng, posting.filename));
-	if (posting.filebody.length == 0)
-	    continue;
-	posting.lines = splitlines(posting.filebody);
 	if (posting.lines.length == 0)
 	    continue;
 
@@ -431,6 +426,29 @@ Posting[] filesToPostings(string[] files)
 	postings[n] = new Posting(filename);
     }
     return postings;
+}
+
+
+/**************************************
+ * Read files in postings, then split into lines[].
+ * Params:
+ *	fromdirng = path to where the posting files are
+ *	postings = one posting per file
+ * Output:
+ *	postings[].lines[] are set
+ */
+void readPostings(string fromdirng, Posting[] postings)
+{
+    foreach (Posting posting; postings)
+    {
+	if (!posting)
+	    continue;
+	std.stdio.writef("%s\r", posting.filename);
+	auto filebody = cast(string)std.file.read(std.path.buildPath(fromdirng, posting.filename));
+	if (filebody.length == 0)
+	    continue;
+	posting.lines = splitlines(filebody);
+    }
 }
 
 
