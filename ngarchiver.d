@@ -1086,13 +1086,17 @@ void writeLine(R)(ref R fp, string line)
 {
     auto i = std.string.indexOf(line, 'h', std.string.CaseSensitive.no);
     if (i == -1)
-        goto L1;
+    {
+	writeHashtag(fp, line);
+        return;
+    }
 
     //if (line[i + 1] == 't') writefln("found h '%s'", line[i .. length]);
     string url;
     url = isURL(line[i .. $]);
     if (!url)
-    {   escapeHTML(fp, line[0 .. i + 1]);
+    {
+        escapeHTML(fp, line[0 .. i + 1]);
         writeLine(fp, line[i + 1 .. $]);
         return;
     }
@@ -1121,18 +1125,62 @@ void writeLine(R)(ref R fp, string line)
               ~ "&artnum="
               ~ article;
         fp.writef( `<a href="%s">%s/%s</a>`, url, ng, article);
-        goto L3;
+        writeLine(fp, rest);
+	return;
     }
 
 L2:
     // Make url into clickable link
     fp.writef( `<a href="%s">%s</a>`, url, url);
-L3:
     writeLine(fp, rest);
-    return;
+}
 
-L1:
-    escapeHTML(fp, line);
+/*********************************
+ * Detect #hashtag and write it as a search URL
+ */
+void writeHashtag(R)(ref R fp, string line)
+{
+    auto i = std.string.indexOf(line, '#', std.string.CaseSensitive.no);
+    if (i == -1)
+    {
+	escapeHTML(fp, line);
+        return;
+    }
+    string tag = isHashtag(line[i .. $]);
+    if (!tag)
+	return;
+
+    escapeHTML(fp, line[0 .. i]);
+    string rest = line[i + tag.length .. $];
+    string url = "https://www.google.com/search?q=site%3Adigitalmars.com%2Fd%2Farchives%2Fdigitalmars+";
+
+    fp.writef(`<a href="%s%s">%s</a>`, url, tag[1 .. $], tag);
+    writeLine(fp, rest);
+}
+
+/**************************
+ * Recognize #hashtag as substring of `s`
+ */
+
+string isHashtag(string s)
+{
+    if (s[0] != '#' || s.length < 2)
+	return null;
+
+    if (!isalpha(s[1]))
+        return null;
+
+    foreach (i; 2 .. s.length)
+    {
+        auto c = s[i];
+        if (isalnum(c) ||
+            c == '-' ||
+            c == '_' ||
+            c == '.')
+            continue;
+        return s[0 .. i];
+    }
+    return s;
 }
 
 /**************************
@@ -1424,6 +1472,9 @@ string amazonDP(size_t n)
         "0131177052",   // Working Effectively With Legacy Code
         "020161586X",   // The Practice of Programming
         "155958324X",   // Empire Deluxe: The Official Strategy Guide
+
+        "0316796883",   // Boyd: The Fighter Pilot Who Changed the Art of War
+        "1617294691",   // C++ Concurrency in Action 2nd Edition
     ];
 
     return dps[n % $];
