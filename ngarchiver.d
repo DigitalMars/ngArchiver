@@ -1096,13 +1096,13 @@ void writeLine(R)(ref R fp, string line)
     url = isURL(line[i .. $]);
     if (!url)
     {
-        escapeHTML(fp, line[0 .. i + 1]);
+        writeHashtag(fp, line[0 .. i + 1]);
         writeLine(fp, line[i + 1 .. $]);
         return;
     }
 
     //writefln("found url '%s'", url);
-    escapeHTML(fp, line[0 .. i]);
+    writeHashtag(fp, line[0 .. i]);
     string rest = line[i + url.length .. $];
 
     // Convert url from old wwwnews format to new format
